@@ -14,7 +14,7 @@ public final class FileLogSink: LogSink, @unchecked Sendable {
     private let rotatedURL: URL
     private let processTag: String?
     private let maxBytes: UInt64
-    private let queue = DispatchQueue(label: "com.zephyr4123.snug.log-file")
+    private let queue = DispatchQueue(label: "com.yw42.snug-rustdesk.log-file")
     private let fallback = Logger(subsystem: Log.subsystem, category: "log-file")
     // 以下两项只在 queue 上访问
     private var handle: FileHandle?

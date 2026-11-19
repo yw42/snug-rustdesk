@@ -10,12 +10,12 @@ public struct SnugPaths: Equatable, Sendable {
         self.logFile = logFile
     }
 
-    /// ~/Library/Application Support/Snug/ 与 ~/Library/Logs/Snug.log
+    /// ~/Library/Application Support/SnugRustDesk/ 与 ~/Library/Logs/SnugRustDesk.log
     public static var standard: SnugPaths {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
         return SnugPaths(
-            dataDirectory: library.appendingPathComponent("Application Support/Snug", isDirectory: true),
-            logFile: library.appendingPathComponent("Logs/Snug.log"))
+            dataDirectory: library.appendingPathComponent("Application Support/SnugRustDesk", isDirectory: true),
+            logFile: library.appendingPathComponent("Logs/SnugRustDesk.log"))
     }
 
     /// 用户设置

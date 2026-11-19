@@ -10,6 +10,8 @@ struct AboutView: View {
     }
 
     private let credits = [
+        Credit(name: "Snug", url: "https://github.com/zephyr4123/snug",
+               author: "zephyr4123", usage: "本项目衍生来源"),
         Credit(name: "UUyc-companion", url: "https://github.com/aoyamashou/UUyc-companion",
                author: "AoyamaShou", usage: "项目前身"),
         Credit(name: "PermissionFlow", url: "https://github.com/jaywcjlove/PermissionFlow",
@@ -29,11 +31,11 @@ struct AboutView: View {
                         .frame(width: 64, height: 64)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text("Snug").font(.title2.bold())
+                            Text("Snug RustDesk").font(.title2.bold())
                             Text(Updater.current?.description ?? "开发版").foregroundStyle(.secondary).monospacedDigit()
                         }
                         Text("远程 Mac 的显示与触控增强")
-                        Link("github.com/zephyr4123/snug", destination: URL(string: "https://github.com/zephyr4123/snug")!)
+                        Link("github.com/yw42/snug-rustdesk", destination: URL(string: "https://github.com/yw42/snug-rustdesk")!)
                     }
                 }
                 .padding(.vertical, 4)
@@ -52,8 +54,6 @@ struct AboutView: View {
                 Text("社区 PR 作者：bubble、gencheng liu、Rongzheng Liu").foregroundStyle(.secondary)
             } header: {
                 Text("致谢（MIT 许可）")
-            } footer: {
-                Text("非 UU远程 官方软件").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -70,7 +70,7 @@ final class AboutWindowController {
     func show(on display: DisplayID? = nil, activating: Bool = true) {
         if window == nil {
             // 先定尺寸再居中（NSWindow(hosting:)），否则按 0×0 居中，窗口偏到右下
-            let w = NSWindow(hosting: AboutView(), title: "关于 Snug")
+            let w = NSWindow(hosting: AboutView(), title: "关于 Snug RustDesk")
             w.titlebarAppearsTransparent = true
             window = w
         }

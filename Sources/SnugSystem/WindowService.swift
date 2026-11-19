@@ -18,7 +18,7 @@ public final class WindowService: WindowControl {
     /// 别的桌面空间里的窗口隔这么久才整个重新试一遍（见 remoteWindows(pid:now:)）
     static let remoteRescanInterval: TimeInterval = 10
 
-    private let queue = DispatchQueue(label: "com.zephyr4123.snug.windows", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.yw42.snug-rustdesk.windows", qos: .userInitiated)
     /// 每个 App 用远程令牌试出来的窗口对象和试的时刻（单调时钟）。只在 queue 上读写
     private let remote = Locked<[pid_t: (windows: [AXUIElement], scannedAt: TimeInterval)]>([:])
 

@@ -126,7 +126,6 @@ protocol AppIntents: AnyObject, Sendable {
     func quit()
     func checkForUpdates()
     func installUpdate()
-    func setUpdateSource(_ source: UpdateSource)
     /// 自动更新走不通时，打开所选更新源的下载地址
     func openDownloadPage()
     /// 指示条上的相机键（截图）

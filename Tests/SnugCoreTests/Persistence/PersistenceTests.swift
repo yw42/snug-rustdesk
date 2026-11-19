@@ -13,8 +13,8 @@ struct PersistenceTests {
         #expect(p.placedRecord(for: ScreenID("abc")).path == "/d/placed/abc.json")
         #expect(p.legacyPlacedRecord.path == "/d/phone-screen.json")
         #expect(p.zoomBook.path == "/d/zoom.json")
-        #expect(SnugPaths.standard.dataDirectory.path.hasSuffix("Library/Application Support/Snug"))
-        #expect(SnugPaths.standard.logFile.path.hasSuffix("Library/Logs/Snug.log"))
+        #expect(SnugPaths.standard.dataDirectory.path.hasSuffix("Library/Application Support/SnugRustDesk"))
+        #expect(SnugPaths.standard.logFile.path.hasSuffix("Library/Logs/SnugRustDesk.log"))
     }
 
     @Test("JSONFile.load 区分不存在 / 损坏 / 成功")

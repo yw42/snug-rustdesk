@@ -126,12 +126,6 @@ extension AppController: AppIntents {
 
     func installUpdate() { updater.install() }
 
-    /// 换了更新源，上一个源连不上之类的提示就不作数了
-    func setUpdateSource(_ source: UpdateSource) {
-        guard changeConfig("更新源 → \(source.title)", { $0.updateSource = source }) else { return }
-        state.update.problem = nil
-    }
-
     func openDownloadPage() { NSWorkspace.shared.open(state.config.updateSource.downloadPage) }
 
     // MARK: 退出收尾

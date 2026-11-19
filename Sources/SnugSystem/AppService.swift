@@ -11,7 +11,7 @@ public final class AppService: AppControl {
     /// 不在这些目录里、但人人都用的：访达
     static let extras = [URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")]
 
-    private let queue = DispatchQueue(label: "com.zephyr4123.snug.apps", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.yw42.snug-rustdesk.apps", qos: .userInitiated)
 
     public init() {}
 

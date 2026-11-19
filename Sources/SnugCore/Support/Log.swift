@@ -1,4 +1,4 @@
-// 日志：写 os.Logger（subsystem com.zephyr4123.snug），同时镜像到可替换的 sink（正式运行是日志文件，测试里关掉）
+// 日志：写 os.Logger（subsystem com.yw42.snug-rustdesk），同时镜像到可替换的 sink（正式运行是日志文件，测试里关掉）
 import Foundation
 import os
 
@@ -17,7 +17,7 @@ extension LogSink {
 }
 
 public enum Log {
-    public static let subsystem = "com.zephyr4123.snug"
+    public static let subsystem = "com.yw42.snug-rustdesk"
 
     private static let logger = Logger(subsystem: subsystem, category: "snug")
     private static let sink = Locked<(any LogSink)?>(nil)

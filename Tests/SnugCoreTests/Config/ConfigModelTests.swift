@@ -13,7 +13,7 @@ struct ConfigModelTests {
         #expect(!c.screenshot)
         #expect(c.zoomSteps == 2)
         #expect(!c.welcomed)
-        #expect(c.updateSource == .tencent)
+        #expect(c.updateSource == .github)
         #expect(c.lastVersion == nil)
     }
 
@@ -144,7 +144,14 @@ struct ConfigModelTests {
     @Test("不认识的更新源（比如更新的版本写的）用默认值，不把整份配置判为损坏")
     func unknownUpdateSource() throws {
         let c = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"updateSource":"mirror","zoomSteps":3}"#.utf8))
-        #expect(c.updateSource == .tencent)
+        #expect(c.updateSource == .github)
+        #expect(c.zoomSteps == 3)
+    }
+
+    @Test("早期的腾讯云设置迁移到派生项目的 GitHub 源")
+    func oldTencentUpdateSource() throws {
+        let c = try decode(#"{"updateSource":"tencent","zoomSteps":3}"#)
+        #expect(c.updateSource == .github)
         #expect(c.zoomSteps == 3)
     }
 

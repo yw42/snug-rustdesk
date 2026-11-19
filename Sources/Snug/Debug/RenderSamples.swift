@@ -192,7 +192,7 @@ enum RenderSamples {
                 u.check = .available(sampleFeed)
                 u.phase = .downloading(0.42)
             }),
-            ("about-update-unreachable", false, { (u: inout UpdateState) in u.problem = .unreachable(.tencent) }),
+            ("about-update-unreachable", false, { (u: inout UpdateState) in u.problem = .unreachable(.github) }),
             ("about-update-cannot-replace", false, { (u: inout UpdateState) in
                 u.check = .available(sampleFeed)
                 u.problem = .cannotReplace

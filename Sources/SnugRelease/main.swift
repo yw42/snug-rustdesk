@@ -1,5 +1,5 @@
 // snug-release：发版时打更新包、写 update.json。只由 scripts/snug 调：
-//   snug-release pack <应用包> <版本> <目录>   dist：把公证过的 Snug.app 打成 Snug-<版本>.pack 和清单 update-package.json，
+//   snug-release pack <应用包> <版本> <目录>   dist：把公证过的 App 打成 SnugRustDesk-<版本>.pack 和清单 update-package.json，
 //                                              再照清单拼一遍、核对签名，不过就不交
 //   snug-release feed <版本> <目录>            ship：清单加上各版本的更新日志（取自标签说明），写成 update.json。
 //                                              放在 ship 而不是 dist：先打包、后打标签时，dist 那会儿还没有这一版的说明
@@ -21,13 +21,13 @@ let encoder: JSONEncoder = {
 }()
 
 func pack(app: URL, version: Version, into dir: URL) throws {
-    let name = "Snug-\(version).pack"
+    let name = "SnugRustDesk-\(version).pack"
     let (package, data) = try UpdatePackage.make(app: app, file: name)
     // 照清单从包里拼一遍，核对拼出来的签名：客户端更新时验收的就是这一条。
     // 包格式只记普通文件的内容和可执行位，应用包里要是有它记不下的东西（扩展属性、空目录），这里就过不了
     let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("snug-release-\(UUID().uuidString)")
     defer { try? FileManager.default.removeItem(at: scratch) }
-    let assembled = scratch.appendingPathComponent("Snug.app")
+    let assembled = scratch.appendingPathComponent("Snug RustDesk.app")
     try package.assemble(into: assembled, from: package.unpack(data, at: 0..<data.count))
     try run("codesign", "--verify", "--strict", "--deep", assembled.path)
     try data.write(to: dir.appendingPathComponent(name))

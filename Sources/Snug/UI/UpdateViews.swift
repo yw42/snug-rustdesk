@@ -15,14 +15,14 @@ extension UpdateState {
         }
         if let problem { return problem.text }
         return switch check {
-        case .unknown: Updater.current == nil ? "开发版不检查更新" : "尚未检查"
+        case .unknown: Updater.enabled ? "尚未检查" : "此构建未启用更新"
         case .upToDate: "已是最新"
         case .available(let feed): "新版本 \(feed.version)"
         }
     }
 }
 
-/// 「关于 Snug」里的软件更新：状态和操作一行，更新源一行
+/// 「关于 Snug」里的软件更新状态和操作
 struct UpdateSection: View {
     let state: AppState
     let intents: any AppIntents
@@ -34,17 +34,6 @@ struct UpdateSection: View {
                 action
             } label: {
                 SettingLabel("软件更新", detail: state.update.summary, warning: state.update.problem != nil, tile: MacTokens.IconTile.update)
-            }
-            LabeledContent {
-                Picker("更新源", selection: Binding(get: { state.config.updateSource }, set: { intents.setUpdateSource($0) })) {
-                    ForEach(UpdateSource.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .fixedSize()
-                .disabled(state.update.phase != .idle)
-            } label: {
-                SettingLabel("更新源", tile: MacTokens.IconTile.updateSource)
             }
         }
     }
@@ -68,7 +57,7 @@ struct UpdateSection: View {
                     Button(update.problem == nil ? "立即更新" : "重试") { intents.installUpdate() }
                         .buttonStyle(.borderedProminent)
                 } else {
-                    Button("检查更新") { intents.checkForUpdates() }.disabled(Updater.current == nil)
+                    Button("检查更新") { intents.checkForUpdates() }.disabled(!Updater.enabled || Updater.current == nil)
                 }
             }
         }

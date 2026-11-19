@@ -7,8 +7,8 @@ import Foundation
 /// 屏的身份：系统按 vendorID + productID + 序列号记住一块屏的设置、排布和 ICC 文件。
 /// 数值全部实测过（见记忆 project-phone-screen、project-multi-screen）
 public struct ScreenSpec: Equatable, Sendable {
-    /// 'SN'：认出自己建的屏
-    public static let vendorID: UInt32 = 0x534E
+    /// 'SR'：与原版 Snug 的虚拟屏隔离
+    public static let vendorID: UInt32 = 0x5352
     /// 竖屏、横屏的产品号：竖屏沿用 2.5 以前手机屏的 0x00F0，横屏另起 0x00F1
     public static let portraitProductID: UInt32 = 0x00F0
     public static let landscapeProductID: UInt32 = 0x00F1

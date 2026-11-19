@@ -51,7 +51,7 @@ enum UpdateProblem: Error, Equatable {
         case .unreachable(let source): "无法从\(source.title)获取更新"
         case .corrupt: "下载内容校验失败"
         case .tooOld: "新版本需手动下载"
-        case .cannotReplace: "无法替换当前位置的 Snug"
+        case .cannotReplace: "无法替换当前位置的 Snug RustDesk"
         case .signature: "新版本签名不符"
         case .failed: "更新失败"
         }
@@ -72,6 +72,9 @@ final class Updater {
     nonisolated static let current = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
         .flatMap(Version.init)
 
+    /// 发布包显式启用后才访问本项目的更新源。
+    nonisolated static let enabled = Bundle.main.object(forInfoDictionaryKey: "SnugRustDeskUpdatesEnabled") as? Bool == true
+
     private let state: AppState
     private let client = UpdateClient()
     private let app = Bundle.main.bundleURL
@@ -87,7 +90,7 @@ final class Updater {
     /// 查一次有没有新版本。不轮询：启动时查一次，之后只有用户点了才查。
     /// waitForNetwork：开机自启时网可能还没起来，等它连上再问
     func check(userInitiated: Bool, waitForNetwork: Bool = false) {
-        guard let current = Self.current, !busy else { return }
+        guard Self.enabled, let current = Self.current, !busy else { return }
         let source = state.config.updateSource
         state.update.phase = .checking
         state.update.problem = nil
@@ -107,7 +110,7 @@ final class Updater {
 
     /// 用户点「立即更新」
     func install() {
-        guard let feed = state.update.available, let current = Self.current, !busy else { return }
+        guard Self.enabled, let feed = state.update.available, let current = Self.current, !busy else { return }
         let source = state.config.updateSource
         state.update.problem = nil
         state.update.phase = .downloading(0)

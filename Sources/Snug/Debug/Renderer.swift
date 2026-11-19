@@ -78,7 +78,6 @@ final class RenderStub: AppIntents, TouchIntents, Navigation {
     func quit() {}
     func checkForUpdates() {}
     func installUpdate() {}
-    func setUpdateSource(_ source: UpdateSource) {}
     func openDownloadPage() {}
     func setScreenshot(_ on: Bool) {}
     func pull(_ window: WindowInfo) {}
