@@ -432,8 +432,7 @@ enum RenderSamples {
             let catalog = AppCatalog(sample: list, installed: installed, loaded: loaded)
             return AnyView(TouchHomeView(screen: id, state: s, catalog: catalog, pages: pages, intents: stub, tab: tab,
                                          confirming: confirming, selected: selected)
-                .frame(width: size.width, height: size.height)
-                .screenPanel(id, state: s))
+                .frame(width: size.width, height: size.height))
         }
     }
 

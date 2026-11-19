@@ -9,7 +9,6 @@ struct TouchModelPage: View {
     let state: AppState
     @Bindable var pages: TouchPages
     let intents: any TouchIntents
-    @Environment(\.topTrailingClear) private var topTrailingClear
 
     private var query: String { pages.trimmedQuery }
     private var current: DeviceChoice { state.screen(screen)?.device ?? .standard }
@@ -23,7 +22,6 @@ struct TouchModelPage: View {
                     Spacer()
                     BarButton(title: "完成", bold: true) { pages.close() }
                 }
-                .padding(.trailing, topTrailingClear)
             }
             .frame(height: TouchTokens.Size.touchTarget)
             .padding(.horizontal, TouchTokens.Space.margin)

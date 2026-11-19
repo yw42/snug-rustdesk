@@ -15,7 +15,6 @@ struct CropView: View {
     @State private var selection = CGRect(x: 0, y: 0, width: 1, height: 1)
     /// 正在拖的把手，和按下时的选区（界面坐标）
     @State private var dragging: (handle: CropGeometry.Handle, start: CGRect)?
-    @Environment(\.topTrailingClear) private var topTrailingClear
 
     var body: some View {
         GeometryReader { geo in
@@ -104,7 +103,6 @@ struct CropView: View {
         .buttonStyle(PressableStyle())
         .padding(.horizontal, metrics.margin)
         // 让开的宽度和别的尺寸一样跟着倍率放大
-        .padding(.trailing, topTrailingClear * metrics.scale)
         .frame(height: metrics.topBar)
         .frame(maxWidth: .infinity)
         .background(LinearGradient(colors: [.black.opacity(0.7), .clear], startPoint: .top, endPoint: .bottom))

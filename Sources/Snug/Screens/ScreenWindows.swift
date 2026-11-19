@@ -190,7 +190,7 @@ final class ScreenWindows {
         let panel = cropPanel ?? TouchPanel(content: FirstMouseHostingView(rootView: CropView(
             image: NSImage(data: image.png) ?? NSImage(), pixelSize: image.size,
             onCancel: { [weak self] in self?.intents.cancelCrop() },
-            onDone: { [weak self] selection in self?.intents.finishCrop(selection) }).screenPanel(id, state: state)))
+            onDone: { [weak self] selection in self?.intents.finishCrop(selection) })))
         cropPanel = panel
         panel.setFrame(screen.frame, display: true)
         panel.orderFrontRegardless()
@@ -200,7 +200,7 @@ final class ScreenWindows {
         Log.info("屏（\(self.id)）的列表、小横条建在 #\(id) 上")
         display = id
         list = TouchPanel(content: FirstMouseHostingView(rootView: TouchHomeView(screen: self.id, state: state, catalog: catalog, pages: pages,
-                                                                                 intents: intents).screenPanel(self.id, state: state)))
+                                                                                 intents: intents)))
         let bar = HomeBarView()
         bar.onActivate = { [weak self] in self?.intents.showList() }
         bar.onCapture = { [weak self] in self?.intents.takeScreenshot() }

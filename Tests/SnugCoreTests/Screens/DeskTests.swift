@@ -609,11 +609,11 @@ struct DeskTests {
     @Test("App 限定了最小高度：按高度等比换档，窗口照样铺满")
     func minimumHeightWindow() async throws {
         let rig = try Rig()
-        rig.windows.setMinSize(finder.key, height: 1000)
+        rig.windows.setMinSize(finder.key, height: 1130)
         await rig.ready()
         await rig.pull(finder)
-        #expect(rig.displays.widths[101] == 610)
-        #expect(rig.windows.window(finder.key)?.frame == FakeDisplays.area(width: 610))
+        #expect(rig.displays.widths[101] == 600)
+        #expect(rig.windows.window(finder.key)?.frame == FakeDisplays.area(width: 600))
     }
 
     @Test("比最宽一档还宽（1200）：用最宽一档，靠左放；之后核对不再白挪")

@@ -8,18 +8,19 @@ private func phone(_ screen: DeviceScreen) -> ScreenFit { ScreenFit(device: scre
 struct ScreenFitTests {
     /// 基准宽度下的可放区域：950 扣掉菜单栏 25、小横条 28
     private let baseArea = CGSize(width: 540, height: 897)
-    private let fit = ScreenFit.standard
+    private let fit = ScreenFit(ratio: 950.0 / 540)
 
-    @Test("没选过手机（iPhone 17 Pro Max）：还是原来的 540×950，档位 540 到 1080、每 10 点一档、比例都一样")
+    @Test("默认手机按设备比例建屏，受像素上限约束")
     func standard() {
-        #expect(fit.size(width: 540) == CGSize(width: 540, height: 950))
-        #expect(fit.size(width: 1080) == CGSize(width: 1080, height: 1900))
+        let fit = ScreenFit.standard
+        #expect(fit.size(width: 540) == CGSize(width: 540, height: 1080))
+        #expect(fit.size(width: 1080) == CGSize(width: 1080, height: 2160))
         #expect(fit.widths.first == 540)
         #expect(fit.widths.last == 1080)
         #expect(zip(fit.widths, fit.widths.dropFirst()).allSatisfy { $1 - $0 == 10 })
         for width in fit.widths {
             let size = fit.size(width: width)
-            #expect(abs(size.height / size.width - 950.0 / 540) < 0.002)
+            #expect(abs(size.height / size.width - 2) < 0.002)
         }
     }
 
@@ -30,35 +31,16 @@ struct ScreenFitTests {
         #expect(longest.size(width: 1080).height * 2 == ScreenFit.portraitPixels.height)
     }
 
-    @Test("比例 = 手机屏幕的高宽比扣掉上下各 91 点（UU 工具栏）；不知道逻辑宽度按 400 点估")
+    @Test("手机比例按设备分辨率计算，与逻辑宽度无关")
     func ratio() {
-        // 20:9 安卓 1080×2400：2.222 - 182/400 = 1.767
         let android = phone(DeviceScreen(width: 1080, height: 2400))
-        #expect(abs(android.ratio - (2400.0 / 1080 - 182.0 / 400)) < 1e-9)
-        #expect(android.baseWidth == 540)
-        #expect(android.size(width: 540) == CGSize(width: 540, height: 954))
-        // 只看比例：自己填 9×20 和 1080×2400 一样
+        #expect(android.ratio == 2)
         #expect(phone(DeviceScreen(width: 9, height: 20)) == android)
-    }
-
-    @Test("矮的屏（16:9 的 iPhone 8）：540 宽时高不到 800、没有 2 倍，基准加宽到够高的一档")
-    func shortScreen() {
         let iPhone8 = phone(DeviceScreen(width: 750, height: 1334, points: 375))
-        #expect(iPhone8.baseWidth == 620)
-        #expect(iPhone8.size(width: 620).height >= 800)
-        #expect(iPhone8.size(width: 610).height < 800)
-        #expect(iPhone8.widths.first == 620)
-        #expect(iPhone8.widths.last == 1080)
-    }
-
-    @Test("比例夹在 1 到 2：折叠屏内屏扣完比正方形还方按正方形（基准 800×800）；太长的按 2")
-    func clamped() {
-        let fold = phone(DeviceScreen(width: 1856, height: 2160))
-        #expect(fold.ratio == 1)
-        #expect(fold.size(width: fold.baseWidth) == CGSize(width: 800, height: 800))
-        let tall = phone(DeviceScreen(width: 9, height: 30))
-        #expect(tall.ratio == 2)
-        #expect(tall.size(width: 540) == CGSize(width: 540, height: 1080))
+        #expect(iPhone8.baseWidth == 540)
+        #expect(abs(iPhone8.ratio - 1334.0 / 750) < 1e-9)
+        let square = phone(DeviceScreen(width: 1856, height: 1856))
+        #expect(square.size(width: square.baseWidth) == CGSize(width: 800, height: 800))
     }
 
     @Test("竖屏手机任何比例的每一档都宽 ≥ 540、高 ≥ 800，也都在像素上限里")
@@ -94,14 +76,13 @@ struct ScreenFitTests {
         }
     }
 
-    @Test("手机横屏：扣掉左右 UU 的工具栏和暗带（154 个手机点），取 2 倍门槛里最窄的一档，短边 525")
+    @Test("手机横屏保留设备比例并取满足 HiDPI 的最窄一档")
     func phoneLandscape() {
-        let f = ScreenFit(device: DeviceChoice.standard.screen, kind: .phone, orientation: .landscape)
-        // 17 Pro Max 横放 956×440 点，扣完 802×440
-        #expect(abs(f.ratio - 440.0 / 802) < 1e-9)
-        #expect(f.size(width: f.baseWidth) == CGSize(width: 957, height: 525))
-        #expect(f.size(width: f.baseWidth - 1).height < 525)
-        #expect(f.widths.last == 1907)
+        let device = DeviceChoice.standard.screen
+        let fit = ScreenFit(device: device, kind: .phone, orientation: .landscape)
+        #expect(fit.ratio == Double(device.width) / Double(device.height))
+        #expect(fit.size(width: fit.baseWidth).height == 525)
+        #expect(fit.size(width: fit.baseWidth - 1).height < 525)
     }
 
     @Test("登记给系统时最宽的在前：第一档比像素上限小太多屏不上线（实测 6144×3840 上限下 2 倍高 1050 像素的不上线；机型库每一条见 bundledFits）")

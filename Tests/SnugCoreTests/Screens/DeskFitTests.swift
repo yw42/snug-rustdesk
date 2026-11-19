@@ -2,7 +2,7 @@ import CoreGraphics
 import Testing
 @testable import SnugCore
 
-/// 换了手机型号（16:9 的 iPhone 8）：基准 620×802
+/// 换了手机型号（16:9 的 iPhone 8）：基准 540×960
 private let iPhone8 = ScreenFit(device: DeviceScreen(width: 750, height: 1334, points: 375), kind: .phone, orientation: .portrait)
 
 @Suite("一块屏的调度：换型号")
@@ -16,7 +16,7 @@ struct DeskFitTests {
         #expect(rig.journal.all.isEmpty)
         await rig.ready()
         #expect(rig.displays.fits[101] == iPhone8)
-        #expect(rig.displays.widths[101] == 620)
+        #expect(rig.displays.widths[101] == iPhone8.baseWidth)
     }
 
     @Test("刚要加屏时换：按新比例建，不再换一遍")
@@ -37,12 +37,12 @@ struct DeskFitTests {
         rig.desk.setFit(iPhone8)
         #expect(rig.desk.state.work == .reshaping)
         await rig.desk.idle()
-        #expect(rig.journal.all == ["reshape 101 620×802"])
+        #expect(rig.journal.all == ["reshape 101 540×960"])
         #expect(rig.desk.state.screen == .ready(101))
         #expect(rig.desk.state.work == nil)
-        // UU 要切走再切回来才按新尺寸推流：提示一句
+        // 提示用户检查客户端画面
         #expect(rig.desk.state.notice == .reshaped)
-        #expect(rig.displays.widths[101] == 620)
+        #expect(rig.displays.widths[101] == iPhone8.baseWidth)
     }
 
     @Test("放着窗口时换：窗口按新比例重新铺满")
@@ -53,8 +53,8 @@ struct DeskFitTests {
         rig.journal.clear()
         rig.desk.setFit(iPhone8)
         await rig.desk.idle()
-        let area = FakeDisplays.area(width: 620, fit: iPhone8)
-        #expect(rig.journal.all.first == "reshape 101 620×802")
+        let area = FakeDisplays.area(width: iPhone8.baseWidth, fit: iPhone8)
+        #expect(rig.journal.all.first == "reshape 101 540×960")
         #expect(rig.windows.window(finder.key)?.frame == area)
         #expect(rig.desk.state.listVisible == false)
     }
@@ -71,7 +71,7 @@ struct DeskFitTests {
         #expect(rig.windows.window(finder.key)?.frame == phoneArea)
         rig.desk.returnToPlaced()
         await rig.desk.idle()
-        #expect(rig.windows.window(finder.key)?.frame == FakeDisplays.area(width: 620, fit: iPhone8))
+        #expect(rig.windows.window(finder.key)?.frame == FakeDisplays.area(width: iPhone8.baseWidth, fit: iPhone8))
     }
 
     @Test("App 限定了最小宽度：按新比例的档位换到装得下它的一档")
@@ -109,7 +109,7 @@ struct DeskFitTests {
         rig.desk.showList()
         await rig.desk.idle()
         #expect(rig.displays.widths[101] == 540)
-        #expect(!rig.journal.all.contains("width 101 620"))
+        #expect(!rig.journal.all.contains("width 101 540"))
     }
 
     @Test("正在放窗口时换：不冲掉「正在打开」，放完轮到换比例时才写「正在调整」")
@@ -124,7 +124,7 @@ struct DeskFitTests {
         await rig.desk.idle()
         #expect(works.contains(.reshaping))
         #expect(rig.desk.state.work == nil)
-        #expect(rig.windows.window(finder.key)?.frame == FakeDisplays.area(width: 620, fit: iPhone8))
+        #expect(rig.windows.window(finder.key)?.frame == FakeDisplays.area(width: iPhone8.baseWidth, fit: iPhone8))
     }
 
     @Test("换不成：提示，屏还是原来的；下次加屏按新的建")

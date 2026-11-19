@@ -10,45 +10,13 @@ extension TouchTokens.Color {
     static var backgroundNSColor: NSColor { NSColor(background) }
 }
 
-extension EnvironmentValues {
-    /// 这块屏右上角要让开的宽度：顶栏最右边的按钮（首页的「型号」、搜索页的「取消」、型号页的「完成」、裁剪的「完成」）往左挪这么多。
-    /// 整块屏共用，建面板时按这块屏的类别注入（见 View.screenPanel），各页只读它、不认类别
-    @Entry var topTrailingClear: CGFloat = 0
-}
-
 extension DeviceKind {
-    /// 屏右上角要让开多少：iPad 上 UU远程 的圆形菜单按钮压着右上角约 45 点（V6）；手机上那里没有 UU 的东西，电脑屏没有面板
-    var topTrailingClear: CGFloat {
-        switch self {
-        case .tablet: TouchTokens.Layout.tabletTopRightClear
-        case .phone, .computer: 0
-        }
-    }
-
     /// 横屏两栏时左边 App 列表的宽度（电脑屏没有面板，跟手机走）
     var landscapeSidebar: CGFloat {
         switch self {
         case .tablet: TouchTokens.Layout.TabletLandscape.sidebar
         case .phone, .computer: TouchTokens.Layout.PhoneLandscape.sidebar
         }
-    }
-}
-
-extension View {
-    /// 盖在这块屏上的面板：注入整块屏共用的环境值
-    func screenPanel(_ screen: ScreenID, state: AppState) -> some View {
-        ScreenPanelEnvironment(screen: screen, state: state, content: self)
-    }
-}
-
-/// 单独一层视图读配置：型号从手机换成平板（同一块屏、不重建面板）时，环境值当场跟着变
-private struct ScreenPanelEnvironment<Content: View>: View {
-    let screen: ScreenID
-    let state: AppState
-    let content: Content
-
-    var body: some View {
-        content.environment(\.topTrailingClear, state.screen(screen)?.device.kind.topTrailingClear ?? 0)
     }
 }
 

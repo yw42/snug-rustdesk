@@ -1,9 +1,5 @@
 // 屏幕适配：屏的比例跟着型号、方向和类别走，宽度跟着屏上的窗口走（docs/how-it-works.md「屏幕适配」）。
-// 比例：把型号的屏幕按这块屏的方向摆好，扣掉 UU 在这个方向上压住画面的部分：
-// - 手机竖屏：UU 把画面等比缩放、居中铺在手机上，上下压掉 uuInset（17 Pro Max 上是 540×950，真机调出来的）
-// - 手机横屏：UU 的工具栏在右边压一条，左边（灵动岛那侧）压一条暗带，上下不压（V6，11-17 主人定扣左右）
-// - 平板：UU 铺满、不压，横竖都不扣（V6）
-// - 电脑：UU 全屏时等比缩小、四周留黑边，不挡东西；有刘海的 MacBook 扣掉顶上那一条，画面正好一像素对一像素（V6）
+// 手机按设备比例建屏，RustDesk 工具栏的遮挡量待实测。
 // 宽度：平时用基准宽度。2 倍高清的门槛按屏自己的方向算，长边 ≥ 800、短边 ≥ 525 点（V4）；
 // 手机竖屏沿用 540 宽（2.8：降到 525 字只大约 3%，老用户升级后无感更要紧），手机横屏取门槛里最窄的一档（字最大），
 // 平板按 V10 的体感取逻辑分辨率除以 1.24，电脑取它自己的分辨率（超出像素上限的按上限，字大一点）。
@@ -30,13 +26,6 @@ public struct ScreenFit: Equatable, Sendable, CustomStringConvertible {
     /// 横屏框得住 6K 的 3008×1692 的 2 倍（V5：新身份当场上线）
     public static let portraitPixels = CGSize(width: 2160, height: 4320)
     public static let landscapePixels = CGSize(width: 6144, height: 3840)
-    /// 手机竖屏画面上下各让出的高度（点）。UU 底部工具栏 17 Pro Max 实测约 268 像素（89 点）；取 91 让 17 Pro Max 正好是
-    /// 真机上调好的 540×950（取 89 是 540×955），多出的 2 点当余量
-    static let uuInset: Double = 91
-    /// 手机横屏左右让出的宽度（手机的点）：右边 UU 的工具栏约 82，左边（灵动岛那侧）的暗带约 72（V6 第一轮实测粗估，待截图量准）
-    static let uuLandscapeInsets: Double = 82 + 72
-    /// 不知道逻辑分辨率时（安卓、自己填的）按这个估短边：安卓手机默认显示大小下常见 360–412dp，平板 800dp 上下
-    static let assumedPhonePoints: Double = 400
     static let assumedTabletPoints: Double = 800
     /// 1 个 Mac 点约合 1.24 个平板点：V10 在 iPad 上的体感，字大、看着舒服
     static let tabletScale: Double = 1.24
@@ -55,7 +44,7 @@ public struct ScreenFit: Equatable, Sendable, CustomStringConvertible {
     /// 最宽一档在前当场上线，窄的档照样列出、能切
     public var registrationOrder: [Int] { widths.reversed() }
 
-    /// 没选过型号时的比例（17 Pro Max 竖屏，540×950）
+    /// 没选过型号时的比例（17 Pro Max 竖屏）
     public static let standard = ScreenFit(device: DeviceChoice.standard.screen, kind: .phone, orientation: .portrait)
 
     /// 按型号、类别和这块屏的方向算
@@ -63,11 +52,9 @@ public struct ScreenFit: Equatable, Sendable, CustomStringConvertible {
         let short = Double(device.width), long = Double(device.height)
         switch (kind, orientation) {
         case (.phone, .portrait):
-            let points = device.points.map(Double.init) ?? Self.assumedPhonePoints
-            self.init(ratio: long / short - 2 * Self.uuInset / points)
+            self.init(ratio: long / short)
         case (.phone, .landscape):
-            let points = device.points.map(Double.init) ?? Self.assumedPhonePoints
-            self.init(ratio: points / (long * points / short - Self.uuLandscapeInsets), orientation: .landscape, width: nil)
+            self.init(ratio: short / long, orientation: .landscape, width: nil)
         case (.tablet, _):
             let points = device.points.map(Double.init) ?? Self.assumedTabletPoints
             let across = orientation == .portrait ? points : long * points / short
