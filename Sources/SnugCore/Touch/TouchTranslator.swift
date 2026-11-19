@@ -1,11 +1,10 @@
-// 手势翻译：手机、平板屏上，UU 发来的单指操作按 iPhone 的习惯重新解释。
+// 手势翻译：手机、平板屏上，将远端转发的左键序列按 iPhone 的单指操作习惯重新解释。
 //   点一下          → 点击（连击计数原样保留，双击照常）；惯性滚动时点一下只是停住，不点到内容
 //   单指滑动        → 滚动，松手带惯性
 //   按住 0.5 秒再拖 → 选择（照旧拖动）
 //   按住 0.5 秒松手 → 右键菜单（选区不丢，菜单里有拷贝、粘贴）
 //   点窗口自己的关闭按钮 → 不补发点击，交给 Snug 先把窗口放回原位再关（直接关，App 会存下屏上的大小和字号）
-// UU 把单指拖动当成鼠标拖动发过来（会选中文字），滚动要两根手指，这里在 Mac 这一侧翻译回来。
-// 纯状态机：吃进 UU 的按下 / 拖动 / 抬起，吐出「原事件放不放行」和要补发的事件，时间由调用方给。
+// 时间由调用方提供，调用方确认事件来源后才交给状态机。
 // 只有范围（TouchRegion）里按下的那一下会被接管；之后的拖动、抬起跟着这一下走，手指滑出范围也一样。
 // 阈值按基准宽度标定，乘上范围带来的缩放倍数：屏换到更宽的一档时跟着放大，在手机上手感不变。
 // 这个模块不认屏：范围和倍数由调用方给（TouchRegion(screen:closeButton:)），系统那半在 SnugSystem 的 TouchTap
@@ -70,6 +69,7 @@ public enum TouchCommand: Equatable, Sendable {
     /// 补发当前这个事件（原事件吞掉，保证顺序在补发的按下之后）
     case replayCurrent
     case rightClick(at: CGPoint)
+    case releaseSelection(at: CGPoint)
     case scroll(ScrollStep)
     /// 点了窗口的关闭按钮：原来的按下、抬起先扣着。系统那半核对过按钮还在那里就交给 Snug 先放回原位再关，
     /// 对不上（窗口挪走、被盖住）就照常补发这次点击
@@ -133,6 +133,21 @@ public struct TouchTranslator: Sendable {
         }
     }
 
+    /// 断开时终止已发出的操作，扣住但尚未发送的按下直接丢弃。
+    public mutating func cancel() -> [TouchCommand] {
+        var commands = stopMomentum()
+        switch phase {
+        case .scrolling:
+            commands.append(.scroll(wheel.step(dx: 0, dy: 0, phase: .ended, momentum: .none, at: origin)))
+        case .selecting:
+            commands.append(.releaseSelection(at: last))
+        case .idle, .pending:
+            break
+        }
+        phase = .idle
+        return commands
+    }
+
     /// 惯性的下一帧；惯性结束的那一帧之后返回 nil
     public mutating func momentumFrame() -> ScrollStep? {
         guard var m = momentum else { return nil }
@@ -164,13 +179,17 @@ public struct TouchTranslator: Sendable {
 
     private mutating func drag(_ input: TouchInput) -> TouchResponse {
         switch phase {
-        case .idle, .selecting:
+        case .idle:
+            return .pass
+        case .selecting:
+            last = input.location
             return .pass
         case .pending(let since):
             guard distance(input.location, origin) >= Self.slop * scale else { return .swallow() }
             if input.time - since >= Self.holdDuration {
                 // 按住后再拖：补发按下，接下来照旧拖动，就是原来的选择
                 phase = .selecting
+                last = input.location
                 return .swallow([.replayPress, .replayCurrent])
             }
             phase = .scrolling

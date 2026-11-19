@@ -42,9 +42,9 @@ public struct SessionEpisode: Sendable {
         return .interrupted
     }
 
-    /// 不再等重连窗口：用户在菜单里点「立即结束」，回到 idle
+    /// 手动结束会话，回到 idle
     public mutating func endNow() -> EpisodeChange? {
-        guard case .interrupted = phase else { return nil }
+        guard isActive else { return nil }
         phase = .idle
         return .ended
     }

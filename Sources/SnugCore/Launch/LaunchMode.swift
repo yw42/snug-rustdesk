@@ -6,7 +6,7 @@ import Foundation
 public enum RenderTarget: String, CaseIterable, Equatable, Sendable {
     /// 设置窗口三页，加添加屏幕、屏幕详情
     case settings
-    case welcome, about, legacy
+    case welcome, about
     /// 查到新版本时的更新窗口（几种状态）
     case update
     /// 菜单栏菜单
@@ -19,14 +19,11 @@ public enum RenderTarget: String, CaseIterable, Equatable, Sendable {
 
 public enum LaunchMode: Equatable, Sendable {
     case app
+    case checkRustDesk
     /// 正常启动，但不等远程，直接建出开着的屏（开发自测用：没有手机也能看屏和上面的列表）
     case previewScreens
     /// 只把界面渲染成 PNG
     case render(RenderTarget, output: URL)
-    /// 打印从 UU远程 读到的控制端与屏幕
-    case dumpUU
-    /// UU远程 兼容自检：核对 Snug 依赖 UU 的几处，回看最近 hours 小时的日志（见 UUCheck）
-    case checkUU(hours: Int)
     /// 帮手模式：把一块屏切到 target 后立即退出（Snug 的屏换档，或把加屏、撤屏时被 macOS 拨动的屏设回去）。
     /// 目标由主程序算好传来，帮手不读配置。主程序亲自切模式，Snug 的屏释放时会拖 40 秒以上才下线；交给短命的子进程切就没有这个问题
     case setMode(display: DisplayID, to: ModeTarget)
@@ -36,10 +33,9 @@ public enum LaunchMode: Equatable, Sendable {
     public static let usage = """
     用法：Snug [模式]
       （无参数）                      正常启动
+      --rd-check                      只读检查 RustDesk、权限和显示器
       --preview-screens               正常启动，不等远程就建出开着的屏（开发自测用）
       --render-<界面> <目录>           把界面渲染成 PNG（界面：\(RenderTarget.allCases.map(\.rawValue).joined(separator: " / "))）
-      --dump-uu                       打印从 UU远程 读到的表格行、控制端与屏幕
-      --check-uu [小时]               UU远程 兼容自检：核对 Snug 依赖 UU 的几处，回看最近几小时的日志（默认 \(UUCheck.defaultHours)，最多 \(UUCheck.maxHours)）
       --probe-screens <规格> [<规格> …]  实测用：建实验屏、打印模式，按 Ctrl-C 撤掉。规格写成
                                       modes=1180x820+1000x695[,name=名字][,serial=999000001][,cap=像素宽x像素高][,pattern=off][,main=on]
       --set-mode <屏幕编号> <宽> <高>   把 Snug 的屏换到这一档（点，2 倍）（主程序内部用）
@@ -79,15 +75,10 @@ public enum LaunchMode: Equatable, Sendable {
             return .render(target, output: URL(fileURLWithPath: try value()))
         }
         switch flag {
+        case "--rd-check":
+            return .checkRustDesk
         case "--preview-screens":
             return .previewScreens
-        case "--dump-uu":
-            return .dumpUU
-        case "--check-uu":
-            guard let raw = rest.first, !raw.hasPrefix("--") else { return .checkUU(hours: UUCheck.defaultHours) }
-            let hours = try number(Int.self)
-            guard hours <= UUCheck.maxHours else { throw LaunchModeError.invalidNumber(flag, raw) }
-            return .checkUU(hours: hours)
         case "--probe-screens":
             var specs: [String] = []
             while let spec = rest.first, !spec.hasPrefix("--") {

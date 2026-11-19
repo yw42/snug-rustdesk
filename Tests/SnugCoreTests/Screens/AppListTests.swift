@@ -36,11 +36,11 @@ struct AppListTests {
         #expect(list.map(\.app.name) == ["1Password", "备忘录", "Bionic", "Ghostty", "Visual Studio Code"])
     }
 
-    @Test("UU远程 不出现在全部 App 和在跑的 App 里")
-    func excludesUU() {
-        let uu = installed(UURemote.bundleID, "UU远程")
-        #expect(AppList.sorted([uu, ghosttyApp]).map(\.app.name) == ["Ghostty"])
-        let apps = [running(1, [], bundle: UURemote.bundleID), running(2, [])]
+    @Test("RustDesk 不出现在全部 App 和在跑的 App 里")
+    func excludesRustDesk() {
+        let rustDesk = installed("com.carriez.rustdesk", "RustDesk")
+        #expect(AppList.sorted([rustDesk, ghosttyApp]).map(\.app.name) == ["Ghostty"])
+        let apps = [running(1, [], bundle: "com.carriez.rustdesk"), running(2, [])]
         #expect(AppList.ordered(apps, frontToBack: []).map(\.pid) == [2])
     }
 

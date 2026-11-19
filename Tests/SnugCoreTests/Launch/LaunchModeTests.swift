@@ -64,23 +64,15 @@ struct LaunchModeTests {
         #expect(try LaunchMode.parse(ModeTarget.hiDPI(width: 540, height: 1170).arguments(display: 9)) == .setMode(display: 9, to: .hiDPI(width: 540, height: 1170)))
     }
 
-    @Test("--dump-uu、--preview-screens；旧的 --preview-phone 不认")
+    @Test("RustDesk 自检和建屏预览，旧诊断参数拒绝")
     func flags() throws {
-        #expect(try LaunchMode.parse(["--dump-uu"]) == .dumpUU)
+        #expect(try LaunchMode.parse(["--rd-check"]) == .checkRustDesk)
+        #expect(throws: LaunchModeError.unknownFlag("--check-uu")) { try LaunchMode.parse(["--check-uu"]) }
+        #expect(throws: LaunchModeError.unknownFlag("--dump-uu")) { try LaunchMode.parse(["--dump-uu"]) }
         #expect(try LaunchMode.parse(["--preview-screens"]) == .previewScreens)
         #expect(throws: LaunchModeError.self) { try LaunchMode.parse(["--preview-phone"]) }
     }
 
-    @Test("--check-uu [小时]：不写按默认，写了要在 1 到上限之间")
-    func checkUU() throws {
-        #expect(try LaunchMode.parse(["--check-uu"]) == .checkUU(hours: UUCheck.defaultHours))
-        #expect(try LaunchMode.parse(["--check-uu", "12"]) == .checkUU(hours: 12))
-        #expect(throws: LaunchModeError.invalidNumber("--check-uu", "0")) { try LaunchMode.parse(["--check-uu", "0"]) }
-        #expect(throws: LaunchModeError.invalidNumber("--check-uu", "\(UUCheck.maxHours + 1)")) {
-            try LaunchMode.parse(["--check-uu", "\(UUCheck.maxHours + 1)"])
-        }
-        #expect(throws: LaunchModeError.conflicting("--check-uu", "--dump-uu")) { try LaunchMode.parse(["--check-uu", "--dump-uu"]) }
-    }
 
     @Test("缺参数值、数字写错、两个模式一起：报错而不是悄悄按正常模式启动")
     func errors() {
@@ -89,8 +81,8 @@ struct LaunchModeTests {
         #expect(throws: LaunchModeError.missingValue("--set-mode")) { try LaunchMode.parse(["--set-mode", "14", "540"]) }
         #expect(throws: LaunchModeError.invalidNumber("--set-mode", "abc")) { try LaunchMode.parse(["--set-mode", "abc", "540", "950"]) }
         #expect(throws: LaunchModeError.invalidNumber("--set-mode", "0")) { try LaunchMode.parse(["--set-mode", "14", "0", "950"]) }
-        #expect(throws: LaunchModeError.conflicting("--dump-uu", "--render-about")) {
-            try LaunchMode.parse(["--dump-uu", "--render-about", "/tmp/out"])
+        #expect(throws: LaunchModeError.conflicting("--preview-screens", "--render-about")) {
+            try LaunchMode.parse(["--preview-screens", "--render-about", "/tmp/out"])
         }
     }
 

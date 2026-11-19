@@ -26,7 +26,7 @@ struct TouchTranslatorTests {
         #expect(TouchTranslator.holdDuration == 0.5)
     }
 
-    @Test("手机屏外按下：原样放行，之后的拖动、抬起也放行（原来的屏保持原版 UU 手势）")
+    @Test("手机屏外按下：原样放行，之后的拖动、抬起也放行")
     func outsidePassesThrough() {
         var t = TouchTranslator()
         #expect(t.handle(input(.press, 100, 300, 0), in: elsewhere) == .pass)
@@ -131,6 +131,42 @@ struct TouchTranslatorTests {
                 == TouchResponse(passOriginal: false, commands: [.replayPress, .replayCurrent]))
         #expect(t.handle(input(.drag, 160, 300, 0.7), in: phone) == .pass)
         #expect(t.handle(input(.release, 160, 300, 0.8), in: phone) == .pass)
+    }
+
+    @Test("取消已开始的选择：在最后拖动位置抬起一次，后续拖动不处理")
+    func cancelSelection() {
+        var t = TouchTranslator()
+        _ = t.handle(input(.press, 100, 300, 0), in: phone)
+        _ = t.handle(input(.drag, 130, 300, 0.6), in: phone)
+        _ = t.handle(input(.drag, 160, 300, 0.7), in: phone)
+        #expect(t.cancel() == [.releaseSelection(at: CGPoint(x: 160, y: 300))])
+        #expect(t.cancel().isEmpty)
+        #expect(t.handle(input(.drag, 170, 300, 0.8), in: phone) == .pass)
+    }
+
+    @Test("取消尚未发出的按下：不点击，也不触发长按")
+    func cancelPendingPress() {
+        var t = TouchTranslator()
+        _ = t.handle(input(.press, 100, 300, 0), in: phone)
+        #expect(t.cancel().isEmpty)
+        #expect(t.handle(input(.release, 100, 300, 0.7), in: phone) == .pass)
+    }
+
+    @Test("取消惯性：发结束相位，之后无惯性帧")
+    func cancelCoasting() {
+        var t = TouchTranslator()
+        _ = t.handle(input(.press, 100, 300, 0), in: phone)
+        _ = t.handle(input(.drag, 100, 340, 0.05), in: phone)
+        _ = t.handle(input(.release, 100, 340, 0.05), in: phone)
+        #expect(t.momentumFrame()?.momentum == .begin)
+        let commands = t.cancel()
+        #expect(commands.count == 1)
+        if case .scroll(let step) = commands.first {
+            #expect(step.momentum == .end)
+        } else {
+            Issue.record("应发出惯性结束事件")
+        }
+        #expect(t.momentumFrame() == nil)
     }
 
     @Test("按住 0.5 秒不动再松手：在按下的地方点右键")

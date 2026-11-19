@@ -12,7 +12,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let quitFlow: QuitFlow
     private var statusBar: StatusBarController?
     private var panels: ScreenPanels?
-    private var legacyObservers: [any NSObjectProtocol] = []
     private var termSource: (any DispatchSourceSignal)?
     /// 这次是开机自启（登录项拉起的），不是用户亲手打开的
     private var launchedAtLogin = false
@@ -35,17 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         handleSIGTERM()
         controller.updater.onNewVersion = { [weak self] userInitiated in self?.router.showUpdate(activating: userInitiated) }
         controller.updater.onInstalled = { [weak self] in self?.quitFlow.userQuit() }
-        legacyObservers = LegacyApp.observe { [weak self] running in
-            self?.controller.state.legacyAppRunning = running
-            if !running { self?.router.legacyAppGone() }
-        }
-        controller.state.legacyAppRunning = LegacyApp.isRunning
-        if controller.state.legacyAppRunning {
-            Log.warn("检测到旧版 UU远程伴侣 正在运行")
-            router.showLegacyNotice { [weak self] in self?.startMonitoring() }
-        } else {
-            startMonitoring()
-        }
+        startMonitoring()
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

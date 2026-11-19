@@ -2,13 +2,13 @@
 import Foundation
 
 public struct AppConfig: Codable, Equatable, Sendable {
-    /// 屏幕列表：远程时建出开着的那几块，设为主屏的那块常驻（见 ScreenPlan）。新装只有一块竖屏手机屏
+    /// 屏幕列表：伴侣会话时建出启用的屏（见 ScreenPlan）。新装只有一块竖屏手机屏
     public var screens = [ScreenConfig.legacyPhone(.standard, enabled: true)]
-    /// 设为主屏的那块，常驻、不随远程建撤；nil 表示不改主屏（默认）
+    /// 会话中临时设为主屏的那块；nil 表示不改主屏（默认）
     public var mainScreen: ScreenID?
     /// 下一块新加的屏至少用哪一段序列号（只增不减：删掉的屏的号也不回收，免得系统把旧屏的记忆套到新屏上）
     public var nextSerialBlock = 0
-    /// 手机、平板屏上把 UU 发来的单指操作翻译成 iPhone 的手势
+    /// 手机、平板屏上翻译来源已经验证的远端单指操作
     public var gestures = true
     /// 手机、平板屏底部小横条左边放相机键：截当前窗口到剪贴板。要另授「录屏与系统录音」权限，默认关
     public var screenshot = false

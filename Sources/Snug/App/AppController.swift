@@ -1,5 +1,5 @@
-// AppController：把 UU 的观测、会话层和屏幕调度接在一起。
-// 每 0.5 秒一拍：感知器给出观测 → 会话层判断连没连、是不是同一次远程 → ScreenPlan 按配置算出要哪些屏，交给 DeskSet。
+// AppController：把 RustDesk 会话、会话层和屏幕调度接在一起。
+// 每 0.5 秒核对权限和窗口；会话变化时重新计算屏幕计划。
 // 要翻译手势的屏在时开手势翻译，范围跟着那几块屏走。全仓唯一写配置的地方；界面只读 state，意图见 AppController+Intents
 import AppKit
 import SnugCore
@@ -26,7 +26,6 @@ final class AppController: Sendable {
     let store: ConfigStore
     /// --preview-screens：不等远程就建出开着的屏
     private let preview: Bool
-    private let sensor = UUSensor()
     private var session = RemoteSession()
     private let touch = TouchTap()
     private var watcher: DisplayWatcher?
@@ -62,12 +61,6 @@ final class AppController: Sendable {
                 if let i = config.screens.firstIndex(where: { $0.id == screen.id }) { config.screens[i].device = resolved }
             }
         }
-        // 2.6.x 设的主屏只在远程时生效；改为常驻后，代价要在设置里看过确认框才算数。升上来先撤掉，同样在建屏前定下来
-        if let current = Updater.current, let last = store.config.lastVersion {
-            changeConfig("从 \(last) 升级：原先只在远程时生效的设为主屏改回「不改」（现为常驻，需在设置中重新选定）") {
-                _ = $0.dropRemoteOnlyMain(running: current)
-            }
-        }
     }
 
     var now: Date { anchor.date.addingTimeInterval(ProcessInfo.processInfo.systemUptime - anchor.uptime) }
@@ -95,18 +88,15 @@ final class AppController: Sendable {
         desks.onGone = { [weak self] gone in self?.catalog.forget(gone) }
         touch.onCloseWindow = { [weak self] window in self?.desks.closePlaced(window: window) }
         screenshots.onChange = { [weak self] overlay in self?.screenshotChanged(overlay) }
-        desks.onTopologyChange = { [weak self] in
-            guard let self else { return }
-            session.noteSelfInducedChange(at: now)
-        }
         let watcher = DisplayWatcher { [weak self] in
-            self?.desks.displaysChanged()
-            self?.syncGestures()
+            guard let self else { return }
+            desks.displaysChanged()
+            syncGestures()
         }
         watcher.start()
         self.watcher = watcher
-        sensor.start()
         if state.accessibilityTrusted { desks.recover() }
+        applyPlan()
         let timer = Timer(timeInterval: Self.tickInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -124,7 +114,6 @@ final class AppController: Sendable {
         tickTimer?.invalidate()
         tickTimer = nil
         watcher?.stop()
-        sensor.stop()
     }
 
     // MARK: 每拍
@@ -137,9 +126,6 @@ final class AppController: Sendable {
         lastTickAt = now
         refreshTrust()
         screenshots.expire()
-        let sample = sensor.sample(now: Date())
-        handle(session.update(sample.signals, now: now))
-        keepPointerOffSnugScreens()
         if now.timeIntervalSince(lastVerifyAt) >= Self.verifyInterval {
             lastVerifyAt = now
             desks.verifyPlacement()
@@ -147,41 +133,30 @@ final class AppController: Sendable {
             desks.settleDisplays()
             refreshScreenRecording()
         }
-        // UU 一次只让一台设备控制（V12），推流只有一路画面，在推哪块屏直接看它
-        state.update(\.streamedDisplay, sample.streamingDisplay)
     }
 
     /// 会话变化统一在这里落地（每拍和菜单的「立即结束」共用）
-    private func handle(_ transitions: [SessionTransition]) {
+    private func handle(_ transitions: [EpisodeChange]) {
         for t in transitions { Log.info("会话：\(Self.describe(t))") }
         if transitions.contains(.ended) {
-            // 远程结束先说一声一块屏都不要，再按「不在远程」重算（只剩常驻的主屏）。不先说「不要」的话，下一次在同一拍里
+            // 先清除本次会话的屏幕选择，再重新计算下一次会话的计划。下一次在同一拍里
             // 开始时前后要的屏一样，上一次在手机上退出的屏会带进这一次。同一拍里先「不要」再「要」不会撤屏重建（DeskSet 排队时读的是最新结论）
             desks.setWishes([])
         }
         applyPlan()
         desks.setRemote(session.inEpisode)
         state.update(\.connection, session.isConnected ? .connected : (session.inEpisode ? .reconnecting : .idle))
-        state.update(\.controllers, session.controllers)
+        syncGestures()
     }
 
-    /// 断开后 UU 不再动指针，而 Snug 的屏要等重连窗口才撤。这十几秒里指针若停在 Snug 的屏上，
-    /// 那块屏在本机看不见，就成了「鼠标找不回来」。等待期每拍看一眼：用户一动又可能滑回去；
-    /// 只在断开与重连之间生效，连上马上停（issue #29）。设为主屏的那块除外：它常驻、远程结束也不撤，
-    /// 指针留在上面正是设主屏的本意（重连后接着用），和撤屏时指针落到主屏一致
-    private func keepPointerOffSnugScreens() {
-        guard session.inEpisode, !session.isConnected else { return }
-        for (id, desk) in state.desks.desks where id != store.config.mainScreen {
-            guard let display = desk.display else { continue }
-            Cursor.leave(display)
-        }
+    func startManualSession() {
+        guard state.accessibilityTrusted, store.config.screens.contains(where: \.enabled),
+              !state.quitting, preview || state.desks.desks.isEmpty else { return }
+        handle(session.startManually(at: now).map { [$0] } ?? [])
     }
 
-    /// 不等重连窗口，立即结束本次远程（菜单栏「立即结束本次远程」，issue #29）。
-    /// 只在重连等待期里有意义：不在这段时间里时 session.endNow() 什么都不做
     func endSessionNow() {
-        guard let change = session.endNow() else { return }
-        Log.info("会话：立即结束（不等重连窗口）")
+        guard let change = session.endManually() else { return }
         handle([change])
     }
 
@@ -196,7 +171,11 @@ final class AppController: Sendable {
         guard trusted != state.accessibilityTrusted else { return }
         state.accessibilityTrusted = trusted
         Log.info("辅助功能权限：\(trusted ? "已授权" : "被收回")")
-        if trusted { desks.recover() }
+        if trusted {
+            if !session.inEpisode { desks.recover() }
+            applyPlan()
+        }
+        syncGestures()
     }
 
     /// 录屏权限也是用户在系统设置里给的：开着截图键时每两秒对一次（不跟着每拍去读 TCC），变了记一笔
@@ -227,7 +206,7 @@ final class AppController: Sendable {
     /// 每块屏一块范围，跟着那块屏走（换档、屏幕重排时 DisplayWatcher 也会调到这里）
     func syncGestures() {
         let cropping = state.screenshotOverlay?.isCropping == true ? state.screenshotScreen : nil
-        let covered: [(id: ScreenID, region: TouchRegion)] = store.config.gestures ? state.desks.desks.compactMap { id, desk in
+        let covered: [(id: ScreenID, region: TouchRegion)] = store.config.gestures && session.isConnected && state.accessibilityTrusted ? state.desks.desks.compactMap { id, desk in
             guard id != cropping, desk.behavior.touch, let display = desk.display else { return nil }
             // 窗口露着时才拦它的关闭按钮：列表盖着时那个位置是列表
             return (id, TouchRegion(screen: CGDisplayBounds(display), closeButton: desk.listVisible ? nil : desk.closeButton))
@@ -246,17 +225,13 @@ final class AppController: Sendable {
         store.config.screens.first { $0.id == id }?.name ?? id.rawValue
     }
 
-    static func describe(_ t: SessionTransition) -> String {
+    static func describe(_ t: EpisodeChange) -> String {
         switch t {
-        case .began(let c): "开始（控制端 \(names(c))）"
-        case .resumed(let c): "重连上，仍是同一次远程（控制端 \(names(c))）"
-        case .controllersChanged(let c): "控制端变为 \(names(c))"
+        case .began: "开始"
+        case .resumed: "重连，继续同一次远程"
         case .interrupted: "断开，等 \(Int(SessionEpisode.reconnectWindow))s 看会不会重连"
         case .ended: "结束"
         }
     }
 
-    private static func names(_ controllers: [String]) -> String {
-        controllers.isEmpty ? "读不到名字" : controllers.joined(separator: "、")
-    }
 }

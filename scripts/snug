@@ -33,7 +33,7 @@ usage() {
   dist      打可分发的安装包 dist/snug-rustdesk/<版本>/SnugRustDesk-<版本>.dmg：Developer ID 签名，App 和 dmg 各自公证、钉票据；
             再把公证过的 App 打成应用内更新用的 SnugRustDesk-<版本>.pack
   ship      发版：核对标签、构建公证包并发布到本项目的 GitHub Releases
-  uu-check  UU远程 兼容自检（只读）：核对 Snug 依赖 UU 的几处，回看最近几小时的日志：scripts/snug uu-check [小时]
+  rd-check  只读检查 RustDesk、权限和显示器
   help      显示这段说明
 
 发版：改好 VERSION 并提交，打带说明的同名标签推上去，再 ship（Release 的说明取自标签说明）：
@@ -389,12 +389,9 @@ cmd_ship() {
   print -- "✅ $APP_NAME $version 已发布：$REPO_URL/releases/tag/$tag"
 }
 
-# UU远程 兼容自检（只读）：UU 更新后先用手机照常连一次（切到 Snug 的屏），再跑这个。判定在 SnugCore 的 UUCheck，
-# 原始材料写进 ~/Library/Logs/Snug-uu-check/。用调试版直接跑、不打包；辅助功能权限按终端算，没授权时只跳过读 UU 的界面
-cmd_uu_check() {
-  step "编译（debug）"
+cmd_rd_check() {
   swift build --product Snug
-  "$(swift build --show-bin-path)/Snug" --check-uu ${1:+"$1"}
+  "$(swift build --show-bin-path)/Snug" --rd-check
 }
 
 # MARK: 入口
@@ -402,7 +399,7 @@ cmd_uu_check() {
 load_machine_env
 case "${1:-help}" in
   check) cmd_check ;;
-  uu-check) cmd_uu_check "${2:-}" ;;
+  rd-check) cmd_rd_check ;;
   app) cmd_app ;;
   install) cmd_install ;;
   dist) cmd_dist ;;

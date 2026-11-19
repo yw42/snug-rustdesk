@@ -33,7 +33,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private func refreshButton() {
         withObservationTracking {
             item.button?.appearsDisabled = !state.config.screens.contains(where: \.enabled) || !state.accessibilityTrusted
-            item.button?.toolTip = "Snug：\(StatusText(state).headline)"
+            item.button?.toolTip = "Snug RustDesk：\(StatusText(state).headline)"
         } onChange: { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.refreshButton() } }
         }
@@ -42,10 +42,15 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         menu.addItem(status())
-        // 断开了还在等重连的 15 秒里给个出口，不用干等（issue #29）
-        if state.connection == .reconnecting { menu.addItem(action("立即结束本次远程", #selector(endSessionNow), symbol: "xmark.circle")) }
-        if state.legacyAppRunning { menu.addItem(action("退出旧版 UU远程伴侣", #selector(quitLegacy), symbol: "xmark.circle")) }
-        // 主屏常驻、本机看不到时，菜单栏是回到 Mac 前最好找的出口
+        if !state.quitting {
+            if state.connection == .idle, state.accessibilityTrusted, state.config.screens.contains(where: { $0.enabled }),
+               state.previewing || state.desks.desks.isEmpty {
+                menu.addItem(action("手动开始伴侣会话", #selector(startManualSession), symbol: "play.circle"))
+            } else if state.connection != .idle {
+                menu.addItem(action("结束伴侣会话并还原", #selector(endSessionNow), symbol: "xmark.circle"))
+            }
+        }
+        // 虚拟屏成为主屏、本机看不到时，菜单栏是回到 Mac 前最好找的出口
         if state.config.mainScreen != nil { menu.addItem(action("取消设为主屏", #selector(cancelMain), symbol: "menubar.rectangle")) }
         menu.addItem(.separator())
         let library = action("App 资源库", #selector(openLibrary), symbol: "square.grid.2x2")
@@ -57,9 +62,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         // 有新版本：系统的菜单角标，更新在设置的通用页里
         if state.update.hasNewVersion { settings.badge = NSMenuItemBadge(string: "新版本") }
         menu.addItem(settings)
-        menu.addItem(action("关于 Snug", #selector(openAbout), symbol: "info.circle"))
+        menu.addItem(action("关于 Snug RustDesk", #selector(openAbout), symbol: "info.circle"))
         menu.addItem(.separator())
-        menu.addItem(action("退出 Snug", #selector(quit), key: "q", symbol: "power"))
+        menu.addItem(action("退出 Snug RustDesk", #selector(quit), key: "q", symbol: "power"))
     }
 
     /// 最上面一行：状态图标块 + 此刻的状态和一行说明。只看不点，所以用自定义视图（不会高亮）
@@ -79,7 +84,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         return it
     }
 
-    @objc private func quitLegacy() { intents.quitLegacyApp() }
+    @objc private func startManualSession() { intents.startManualSession() }
     @objc private func cancelMain() { intents.setMainScreen(nil) }
     @objc private func endSessionNow() { intents.endSessionNow() }
     @objc private func openSettings() { navigation.openSettings(on: clickedScreen?.displayID) }
@@ -88,7 +93,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     @objc private func openLibrary() {
         let screen = clickedScreen
         let display = screen?.displayID
-        // 认不出是哪块屏的菜单栏时，资源库按 UU 在推的电脑屏选，开错屏时从这里查
+        // 认不出是哪块屏的菜单栏时，资源库按可用电脑屏选，开错屏时从这里查
         Log.info("菜单栏：点了「App 资源库」，在\(screen.map { "「\($0.localizedName)」（display \(display.map { "\($0)" } ?? "?")）" } ?? "认不出的屏")的菜单栏")
         navigation.openLibrary(on: display)
     }

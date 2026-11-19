@@ -80,8 +80,8 @@ public struct SearchKeys: Equatable, Sendable {
 }
 
 public enum AppList {
-    /// 不出现在资源库里的 App：UU远程 自己（把遥控器放到 Snug 的屏上没有意义，退了它远程就断了）
-    public static let excludedBundles: Set<String> = [UURemote.bundleID]
+    /// 远控软件本身留在控制链路上。
+    public static let excludedBundles: Set<String> = ["com.carriez.rustdesk"]
 
     /// 不给退出的 App：访达。同 Mac，它的菜单、程序坞里都没有「退出」（实测 11-14 terminate 能退掉，桌面图标跟着没了）
     private static let unquittableBundles: Set<String> = ["com.apple.finder"]

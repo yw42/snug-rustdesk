@@ -118,7 +118,6 @@ extension AppController: AppIntents {
         return previous != nil
     }
 
-    func quitLegacyApp() { LegacyApp.quit() }
 
     func quit() { onQuitRequested?() }
 

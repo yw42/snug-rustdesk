@@ -23,9 +23,9 @@ struct StatusText: Equatable {
         if s.quitting { return "正在退出" }
         if !s.accessibilityTrusted { return "需要\(PermissionName.accessibility)权限" }
         switch s.connection {
-        case .idle: return "等待连接"
+        case .idle: return "等待开始伴侣会话"
         case .reconnecting: return "连接中断"
-        case .connected: return s.controllers.isEmpty ? "远程中" : "\(s.controllers.joined(separator: "、")) · 远程中"
+        case .connected: return "手动伴侣会话"
         }
     }
 
@@ -35,8 +35,7 @@ struct StatusText: Equatable {
         if s.quitting { return "正在还原窗口" }
         if !s.accessibilityTrusted { return "用于移动窗口与转换手势" }
         if !s.config.screens.contains(where: \.enabled) { return "屏幕都已关闭" }
-        if s.connection == .idle { return nil }
-        if s.gesturesFailed { return "手势转换未启用" }
+        if s.connection == .idle { return "使用菜单栏开始，随后在 RustDesk 中切屏" }
         let screens = s.config.screens.filter(\.enabled)
         let states = screens.map { s.desks.desks[$0.id]?.screen ?? .off }
         if let watched = s.watchedScreen, let name = s.screen(watched)?.name {
@@ -44,7 +43,7 @@ struct StatusText: Equatable {
         }
         if states.contains(.preparing) { return "正在准备屏幕" }
         if states.contains(.failed) { return "有屏幕创建失败" }
-        if states.contains(where: { $0.display != nil }) { return "在 UU远程 中选择 Snug 的屏" }
+        if states.contains(where: { $0.display != nil }) { return s.gesturesFailed ? "在 RustDesk 中切屏 · 使用原生输入" : "在 RustDesk 中切屏" }
         return s.desks.dismissed.isEmpty ? nil : "本次远程已退出这些屏"
     }
 }
@@ -84,7 +83,7 @@ extension Desk.Notice {
         case .noNewWindow(let app): StatusText(headline: "\(app) 无法新建窗口", detail: "可点 App 打开已有窗口")
         case .noWindow(let app): StatusText(headline: "未找到 \(app) 的窗口", detail: "App 已打开，但没有可显示的窗口")
         case .quitStalled(let app, _): StatusText(headline: "\(app) 未退出", detail: "强制退出将丢失未存储的内容")
-        case .reshaped: StatusText(headline: "屏幕比例已调整", detail: "在 UU远程 中切到其他屏幕再切回，点按位置才准确")
+        case .reshaped: StatusText(headline: "屏幕比例已调整", detail: "请检查 RustDesk 画面和点按位置")
         case .reshapeFailed: StatusText(headline: "屏幕比例未能调整", detail: "下次连接时生效")
         case .zoomLeftBehind(let app, let steps): StatusText(headline: "\(app) 窗口已关闭", detail: "再打开时字号若偏大，按 \(steps) 次 ⌘- 复原")
         }

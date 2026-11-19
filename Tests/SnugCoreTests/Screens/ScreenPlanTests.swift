@@ -68,16 +68,16 @@ struct ScreenPlanTests {
         #expect(wishes.map(\.main) == [false, true])
     }
 
-    @Test("设为主屏的那块常驻：不在远程也要它，别的屏照旧只在远程时要；关着、没有辅助功能权限时不要")
-    func persistentMain() {
+    @Test("临时主屏随会话建撤，预览与空闲不接管主屏")
+    func temporaryMain() {
         var c = config()
         c.mainScreen = c.screens[1].id
-        let idle = ScreenPlan.wishes(config: c, remote: false, trusted: true)
-        #expect(idle.map(\.id) == [c.screens[1].id])
-        #expect(idle.map(\.main) == [true])
-        #expect(ScreenPlan.wishes(config: c, remote: false, trusted: false).isEmpty)
-        c.screens[1].enabled = false
         #expect(ScreenPlan.wishes(config: c, remote: false, trusted: true).isEmpty)
+        let preview = ScreenPlan.wishes(config: c, remote: false, trusted: true, preview: true)
+        #expect(preview.map(\.main) == [false, false])
+        #expect(ScreenPlan.wishes(config: c, remote: true, trusted: false).isEmpty)
+        c.screens[1].enabled = false
+        #expect(ScreenPlan.wishes(config: c, remote: true, trusted: true).map(\.main) == [false])
     }
 
     @Test("加到上限就不再加；手改配置开了更多块：只建前 4 块")

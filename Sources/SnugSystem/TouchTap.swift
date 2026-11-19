@@ -1,5 +1,4 @@
-// 手势翻译的系统部分：一个事件监听，只接管 UURemoteServer 发来、在某块范围里按下的鼠标左键（每块要翻译手势的屏一块），
-// 交给 TouchTranslator 判断，再照它说的补发点击、右键或滚动（事件怎么读、怎么拼见 TouchEvents）。本机的触控板、鼠标一律不碰。
+// 仅把来源已确认、在某块虚拟屏内开始的左键序列交给 TouchTranslator。
 // 跑在独立线程上：主线程会被建屏、搬窗口卡住，监听回调一慢，系统会让全机的鼠标跟着卡
 import CoreGraphics
 import Foundation
@@ -11,11 +10,14 @@ import SnugCore
 public final class TouchTap {
     /// 手势翻译管的范围（CGEvent 坐标），每块要翻译手势的屏一块。主线程写，监听线程读
     private let regions = OSAllocatedUnfairLock<[TouchRegion]>(initialState: [])
+    private let sourceMatches: (@Sendable (CGEvent) -> Bool)?
     private var session: TapSession?
     /// 手机上点了屏上那个窗口的关闭按钮（核对过、点击已经吞掉了），交回窗口编号：在主线程上调
     public var onCloseWindow: ((UInt32) -> Void)?
 
-    public init() {}
+    public init(sourceMatches: (@Sendable (CGEvent) -> Bool)? = nil) {
+        self.sourceMatches = sourceMatches
+    }
 
     /// 只在这几块范围里翻译手势，一块都没有就关掉监听。范围变了（换档、屏幕重排）照样调，监听不用重开。
     /// 要翻译却建不起事件监听（多半是没有辅助功能权限）时交回 false，下次调用再试
@@ -25,13 +27,15 @@ public final class TouchTap {
             stop()
             return true
         }
-        return start()
+        // RustDesk 触摸模式的来源尚未经真机确认，先保留原生输入。
+        guard let sourceMatches else { return false }
+        return start(sourceMatches: sourceMatches)
     }
 
     /// 起监听线程，等它报告监听建没建成
-    private func start() -> Bool {
+    private func start(sourceMatches: @escaping @Sendable (CGEvent) -> Bool) -> Bool {
         guard session == nil else { return true }
-        let next = TapSession(regions: regions) { [weak self] window in
+        let next = TapSession(regions: regions, sourceMatches: sourceMatches) { [weak self] window in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.onCloseWindow?(window) } }
         }
         guard next.start() else {
@@ -39,7 +43,7 @@ public final class TouchTap {
             return false
         }
         session = next
-        Log.info("手势翻译已开启（只接管 \(UURemote.serverProcess) 发来、在 Snug 屏里的操作）")
+        Log.info("手势翻译已开启（仅接管已确认来源的虚拟屏操作）")
         return true
     }
 
@@ -54,6 +58,7 @@ public final class TouchTap {
 /// 一次监听：自己的线程、自己的 run loop、自己的状态机。除了 start / stop，其余都只在这个线程上跑
 private final class TapSession: @unchecked Sendable {
     private let regions: OSAllocatedUnfairLock<[TouchRegion]>
+    private let sourceMatches: @Sendable (CGEvent) -> Bool
     private let closeWindow: @Sendable (UInt32) -> Void
     /// 监听线程的 run loop：start 等它建好才返回，之后只读
     private var runLoop: CFRunLoop?
@@ -63,12 +68,13 @@ private final class TapSession: @unchecked Sendable {
     private var translator = TouchTranslator()
     private var heldPress: CGEvent?
     private var coastTimer: CFRunLoopTimer?
-    private var uu = UUEventSource()
     /// 这一下按在哪块范围里：之后的拖动、抬起跟着这一下走，手指滑出范围也一样
     private var pressed: TouchRegion?
 
-    init(regions: OSAllocatedUnfairLock<[TouchRegion]>, closeWindow: @escaping @Sendable (UInt32) -> Void) {
+    init(regions: OSAllocatedUnfairLock<[TouchRegion]>, sourceMatches: @escaping @Sendable (CGEvent) -> Bool,
+         closeWindow: @escaping @Sendable (UInt32) -> Void) {
         self.regions = regions
+        self.sourceMatches = sourceMatches
         self.closeWindow = closeWindow
     }
 
@@ -80,7 +86,7 @@ private final class TapSession: @unchecked Sendable {
             ready.signal()
             if ok { CFRunLoopRun() }
         }
-        thread.name = "com.zephyr4123.snug.touch"
+        thread.name = "SnugRustDesk.touch"
         thread.qualityOfService = .userInteractive
         thread.start()
         // 建监听是同步的、很快，不设超时：设了超时反而会在超时后留下一个关不掉的监听。
@@ -97,8 +103,7 @@ private final class TapSession: @unchecked Sendable {
                 CFMachPortInvalidate(tap)
             }
             tap = nil
-            stopCoasting()
-            heldPress = nil
+            cancelGesture()
             CFRunLoopStop(CFRunLoopGetCurrent())
         }
         CFRunLoopWakeUp(runLoop)
@@ -123,10 +128,11 @@ private final class TapSession: @unchecked Sendable {
         let pass = Unmanaged.passUnretained(event)
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            cancelGesture()
             Log.warn("手势翻译的事件监听被系统停用（\(type == .tapDisabledByTimeout ? "回调超时" : "用户输入")），已重新开启")
             return pass
         }
-        guard let kind = TouchEvents.kind(of: type), !TouchEvents.isReplay(event), uu.sent(event) else { return pass }
+        guard let kind = TouchEvents.kind(of: type), !TouchEvents.isReplay(event), sourceMatches(event) else { return pass }
 
         let input = TouchInput(kind, at: event.location, time: ProcessInfo.processInfo.systemUptime)
         if kind == .press { pressed = regions.withLock { $0 }.first { $0.frame.contains(event.location) } }
@@ -139,15 +145,17 @@ private final class TapSession: @unchecked Sendable {
         return response.passOriginal ? pass : nil
     }
 
-    private func perform(_ command: TouchCommand, current: CGEvent, region: TouchRegion?) {
+    private func perform(_ command: TouchCommand, current: CGEvent? = nil, region: TouchRegion? = nil) {
         switch command {
         case .replayPress:
             TouchEvents.post(heldPress)
             heldPress = nil
         case .replayCurrent:
-            TouchEvents.post(current.copy())
+            TouchEvents.post(current?.copy())
         case .rightClick(let point):
             TouchEvents.rightClick(at: point).forEach(TouchEvents.post)
+        case .releaseSelection(let point):
+            TouchEvents.post(TouchEvents.releaseSelection(at: point))
         case .scroll(let step):
             TouchEvents.post(TouchEvents.scroll(step))
         case .closeWindow(let point):
@@ -160,6 +168,13 @@ private final class TapSession: @unchecked Sendable {
                 perform(.replayCurrent, current: current, region: region)
             }
         }
+    }
+
+    private func cancelGesture() {
+        stopCoasting()
+        heldPress = nil
+        pressed = nil
+        translator.cancel().forEach { perform($0) }
     }
 
     /// 窗口服务器里此刻在屏上的窗口，从前到后

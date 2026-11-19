@@ -73,7 +73,7 @@ final class RenderStub: AppIntents, TouchIntents, Navigation {
     func setLaunchAtLogin(_ on: Bool) {}
     func openLoginItemsSettings() {}
     func markWelcomed() {}
-    func quitLegacyApp() {}
+    func startManualSession() {}
     func endSessionNow() {}
     func quit() {}
     func checkForUpdates() {}

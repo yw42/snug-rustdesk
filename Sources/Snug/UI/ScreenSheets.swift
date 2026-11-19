@@ -64,12 +64,12 @@ struct AddScreenSheet: View {
                             .frame(width: MacTokens.Size.nameFieldWidth)
                     } label: {
                         Text("名字")
-                        Text("显示在 UU远程 的屏幕列表里")
+                        Text("显示在 RustDesk 的屏幕列表里")
                     }
                 }
             }
             .sheetForm()
-            Tip(symbol: "info.circle", text: "UU远程 一次只让一台设备控制。新加的屏留给横竖切换，或者换另一台设备时用。")
+            Tip(symbol: "info.circle", text: "新加的屏可用于横竖切换或另一种设备。")
             if kind == .computer {
                 Tip(symbol: "exclamationmark.triangle", text: "没接显示器的 Mac，加任何一块屏都会顶掉系统的默认屏。")
             }

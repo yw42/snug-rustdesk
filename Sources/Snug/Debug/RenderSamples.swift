@@ -22,7 +22,6 @@ enum RenderSamples {
         case .settings: settings
         case .welcome: welcome
         case .about: about
-        case .legacy: [RenderSample(name: "legacy") { AnyView(LegacyNoticeView(quitLegacy: {}, keepBoth: {})) }]
         case .menu: menu
         case .screens: screens
         case .library: library
@@ -91,7 +90,6 @@ enum RenderSamples {
             page("settings-screens-trouble") { s in
                 s.config = sampleConfig(count: ScreenConfig.limit)
                 s.accessibilityTrusted = false
-                s.legacyAppRunning = true
                 s.configSaveFailed = true
                 s.loginItemIssue = .needsApproval
                 s.config.screenshot = true

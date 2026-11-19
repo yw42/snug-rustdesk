@@ -68,7 +68,7 @@ struct ScreensPage: View {
                     .labelsHidden()
                     .fixedSize()
                 } label: {
-                    SettingLabel("设为主屏", detail: "常驻并作为主屏，每次连接直接进入", tile: MacTokens.IconTile.mainScreen)
+                    SettingLabel("设为主屏", detail: "在伴侣会话期间临时设为主屏", tile: MacTokens.IconTile.mainScreen)
                 }
             }
         }
@@ -96,11 +96,9 @@ struct ScreensPage: View {
 /// 设为主屏的代价：设置里确认时讲清楚（README「设为主屏」同一套说法）
 enum MainScreenNotice {
     static let detail = """
-        此屏将常驻并作为 Mac 的主屏，立即生效；UU远程 每次连接即进入此屏。
+        此屏将在伴侣会话中成为 Mac 主屏。结束会话时恢复原排布。
 
-        影响：当前主屏上的窗口随即移至此屏；此后程序坞、新窗口、系统提示与锁屏登录框均显示于此屏，本机不可见。适用于未接显示器或仅远程使用的 Mac。
-
-        原因：UU远程 在连接时选定主屏，Snug 仅能在连接后察觉，须预先设定。可随时在 App 资源库或菜单栏取消。
+        程序坞、新窗口、系统提示以及锁屏登录框可能显示于虚拟屏。可在菜单栏取消。
         """
 }
 
@@ -156,10 +154,10 @@ private struct WhyManyScreens: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MacTokens.Space.m) {
             Text("可以开几块屏").font(.headline)
-            Text("UU远程 一次只让一台设备控制。多开的屏留给：").foregroundStyle(.secondary)
-            reason("rectangle.portrait.rotate", "横竖切换", "同一台设备横竖各一块，转过来在 UU 里切")
+            Text("在 RustDesk 显示器列表中选择适合当前设备的屏：").foregroundStyle(.secondary)
+            reason("rectangle.portrait.rotate", "横竖切换", "同一台设备横竖各一块，转过来在 RustDesk 中切屏")
             reason("arrow.left.arrow.right", "换设备", "另一台接管后直接选它的屏，不用改设置")
-            Text("关着的屏远程时不建，UU 的屏幕列表也更短。").font(.callout).foregroundStyle(.secondary)
+            Text("关着的屏远程时不建，RustDesk 的屏幕列表也更短。").font(.callout).foregroundStyle(.secondary)
         }
         .padding(MacTokens.Space.l)
         .frame(width: MacTokens.Size.helpPopoverWidth, alignment: .leading)
@@ -214,10 +212,6 @@ private struct Issue: Identifiable {
     @MainActor
     static func all(_ state: AppState, _ intents: any AppIntents) -> [Issue] {
         var list: [Issue] = []
-        if state.legacyAppRunning {
-            list.append(Issue(id: "legacy", text: StatusText(headline: "旧版「UU远程伴侣」运行中", detail: "与 Snug 同时运行将相互干扰"),
-                              action: .run("退出旧版", intents.quitLegacyApp)))
-        }
         if let issue = state.loginItemIssue {
             list.append(Issue(id: "login", text: issue.text,
                               action: issue == .needsApproval ? .run("前往允许", intents.openLoginItemsSettings) : nil))
@@ -269,8 +263,9 @@ struct TouchPage: View {
         Form {
             Section {
                 Toggle(isOn: Binding(get: { state.config.gestures }, set: { intents.setGestures($0) })) {
-                    SettingLabel("触控手势", detail: "单指滚动 · 长按选择 · 长按松开右键", tile: MacTokens.IconTile.gestures)
+                    SettingLabel("触控手势", detail: "输入来源待验证，当前使用 RustDesk 原生输入", tile: MacTokens.IconTile.gestures)
                 }
+                .disabled(true)
                 LabeledContent {
                     ZoomSlider(steps: Binding(get: { state.config.zoomSteps }, set: { intents.setZoomSteps($0) }))
                 } label: {

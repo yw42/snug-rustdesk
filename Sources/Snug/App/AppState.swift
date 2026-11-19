@@ -22,7 +22,7 @@ final class AppState {
     var previewing = false
     /// 此刻同时连着的控制端
     var controllers: [String] = []
-    /// UU 此刻在推的屏
+    /// 客户端正在查看的屏
     var streamedDisplay: DisplayID?
     /// 各块屏上的状态（DeskSet 写）
     var desks = DeskSet.State()
@@ -36,8 +36,6 @@ final class AppState {
     var loginItemIssue: LoginItemIssue?
     /// 上一次改设置没能写进 config.json
     var configSaveFailed = false
-    /// 旧版「UU远程伴侣」正在运行
-    var legacyAppRunning = false
     /// 正在退出收尾
     var quitting = false
     /// 应用内更新：查到了什么、进行到哪（Updater 写）
@@ -64,10 +62,10 @@ final class AppState {
         desks.desks.first { $0.value.display == display }?.key
     }
 
-    /// UU 此刻在推的那块 Snug 屏，也就是用户此刻正在这块屏上
+    /// 客户端正在查看的那块 Snug 屏，也就是用户此刻正在这块屏上
     var watchedScreen: ScreenID? { streamedDisplay.flatMap { screenID(on: $0) } }
 
-    /// 手机（控制端）此刻在看这块屏，资源库才为它刷。不知道 UU 在推哪块屏（推流日志没读到）时当作在看；
+    /// 手机（控制端）此刻在看这块屏，资源库才为它刷。客户端未报告屏幕时当作在看；
     /// 没人远程时谁都没在看（常驻的主屏）
     func watching(_ id: ScreenID) -> Bool { screensInUse && (streamedDisplay == nil || watchedScreen == id) }
 
@@ -120,7 +118,7 @@ protocol AppIntents: AnyObject, Sendable {
     /// 开机启动待允许：直接打开系统设置的「登录项」
     func openLoginItemsSettings()
     func markWelcomed()
-    func quitLegacyApp()
+    func startManualSession()
     /// 不等重连窗口，立即结束本次远程（断开后的重连等待期里才有意义，issue #29）
     func endSessionNow()
     func quit()
