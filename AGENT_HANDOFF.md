@@ -393,11 +393,11 @@ git grep -in "UU远程\|uu-check\|--dump-uu"   # 确认无功能残留
 | 字段 | 值 |
 |---|---|
 | 最后更新 | 2026-11-19 |
-| 当前阶段 | P0 · 解耦提交（尚未开始） |
+| 当前阶段 | P0 代码已落地，M0 手动路径可构建（[实施清单](docs/TODO-rustdesk.md)） |
 | Git 状态 | 已 fork；`origin` = 自己的 fork，`upstream` = `zephyr4123/snug` |
 | 当前分支 | `decouple-rustdesk`（已建立） |
 | 已完成 | 路径决策（独立 companion）、fork 与 remote 配置、[需求与验收用例](docs/PRODUCT.md) |
-| 下一步 | 按需求文档实施 P0 解耦 → 跑 `scripts/snug check` |
+| 下一步 | 并装验证、记录手机端切屏与输入来源，确认可用的自动会话信号 |
 | 未决问题 | 仓库/应用正式名称；RustDesk 连接感知 provider 选型；是否保留配置 UI 骨架 |
 | 阻塞项 | 无 |
 
