@@ -408,6 +408,8 @@ final class FakeArrangement: DisplayArrangement {
     var origins_: [DisplayID: CGPoint] = [1: .zero]
     weak var displays: FakeDisplays?
     var fails = false
+    var recoveryWritesFail = false
+    private(set) var recoveryOrigins: [DisplayID: CGPoint]?
     /// 设主屏、摆回去时系统的副作用（原主屏上的窗口跟着主屏走）
     var onChange: (() -> Void)?
 
@@ -419,6 +421,19 @@ final class FakeArrangement: DisplayArrangement {
             all[id] = displays?.bounds(id)?.origin
         }
         return all
+    }
+
+    func saveRecoveryOrigins(_ origins: [DisplayID: CGPoint]) -> Bool {
+        guard !recoveryWritesFail else { return false }
+        recoveryOrigins = origins
+        return true
+    }
+
+    func clearRecoveryOrigins() { recoveryOrigins = nil }
+
+    func recoverOrigins() async {
+        guard let snapshot = recoveryOrigins, await restore(snapshot) else { return }
+        clearRecoveryOrigins()
     }
 
     func makeMain(_ id: DisplayID) async -> Bool {

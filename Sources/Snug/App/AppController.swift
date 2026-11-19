@@ -45,7 +45,7 @@ final class AppController: Sendable {
         let windows = WindowService()
         let apps = AppService()
         desks = DeskSet(displays: VirtualDisplayService(helper: helper), windows: windows, apps: apps,
-                        arrangement: DisplayArrangementService(), paths: paths, defaultZoom: store.config.zoomSteps)
+                        arrangement: DisplayArrangementService(recoveryURL: paths.dataDirectory.appendingPathComponent("display-origins.json")), paths: paths, defaultZoom: store.config.zoomSteps)
         catalog = AppCatalog(apps: apps, windows: windows)
         state.config = store.config
         state.previewing = preview
@@ -91,6 +91,7 @@ final class AppController: Sendable {
         let watcher = DisplayWatcher { [weak self] in
             guard let self else { return }
             desks.displaysChanged()
+            if !session.inEpisode, !state.quitting { desks.recoverArrangement() }
             syncGestures()
         }
         watcher.start()

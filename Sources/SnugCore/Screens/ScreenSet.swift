@@ -4,8 +4,7 @@
 // 一批增删（apply）前后只记一次周围的样子、只善后一次：macOS 一换屏幕组合，就把别的窗口挪来挪去、
 // 把别的屏拨回它给这组屏幕记的模式（issue #13），换完按换之前的样子放回，Snug 的屏来去，别的都照旧。
 // 设为主屏（docs/how-it-works.md「设为主屏」）也是拓扑变化，同样收在这里：建好、善后之后设主屏，原主屏上的窗口跟着搬过去（V11）；
-// 撤之前先设回（releaseMain，在 DeskSet 清场之前），窗口随之回到原主屏。改之前在内存里记下原来的排布；
-// Snug 崩了，它的屏随进程消失，macOS 按剩下这组屏记的排布自己摆回（11-17 实测），用不着落盘的账。
+// 撤屏前先设回原主屏。系统层在改排布前记录原点，供异常退出后恢复。
 // 动作由调用方排进同一条队（DeskSet 的 SerialLane），加屏失败的重试也排进这条队
 import CoreGraphics
 import Foundation
@@ -326,11 +325,17 @@ public final class ScreenSet {
         }
         // 上次没摆回去的那份留着：最早的那份才是用户自己的排布
         let fresh = savedOrigins == nil
-        if fresh { savedOrigins = before }
+        if fresh {
+            guard arrangement.saveRecoveryOrigins(before) else { return }
+            savedOrigins = before
+        }
         onTopologyChange?()
         guard await arrangement.makeMain(display) else {
             Log.error("「\(wish.spec.name)」#\(display) 设成主屏失败")
-            if fresh { savedOrigins = nil }
+            if fresh {
+                savedOrigins = nil
+                arrangement.clearRecoveryOrigins()
+            }
             return
         }
         mainScreen = wish.id
@@ -340,12 +345,22 @@ public final class ScreenSet {
         await timeline.sleep(Self.topologySettle)
     }
 
+    func recoverArrangement() async {
+        guard mainScreen == nil else { return }
+        if savedOrigins != nil {
+            await restoreArrangement(because: "重新核对屏幕排布")
+        } else {
+            await arrangement.recoverOrigins()
+        }
+    }
+
     private func restoreArrangement(because reason: String) async {
         guard let saved = savedOrigins else { return }
         onTopologyChange?()
         if await arrangement.restore(saved) {
             Log.info("\(reason)，排布摆回设主屏之前（\(Self.describe(saved))）")
             savedOrigins = nil
+            arrangement.clearRecoveryOrigins()
             claimed = nil
         } else {
             // 留着：再设主屏时还用这份最早的；屏撤掉时 macOS 按这组屏幕记的排布摆回

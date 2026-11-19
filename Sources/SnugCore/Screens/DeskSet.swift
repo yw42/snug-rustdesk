@@ -580,12 +580,17 @@ public final class DeskSet {
     /// 2.5 及以前的还原账先挪成那块手机屏的账
     public func recover() {
         lane.run {
+            await self.screens.recoverArrangement()
             let records = PlacedRecords(paths: self.env.paths)
             records.migrateLegacy()
             for id in records.screens() {
                 await (self.desks[id] ?? Desk(id: id, behavior: .touchScreen, env: self.env)).putBackLeftover()
             }
         }
+    }
+
+    public func recoverArrangement() {
+        lane.runCoalesced("arrangement-recovery") { await self.screens.recoverArrangement() }
     }
 
     /// 定期调用（和 verifyPlacement 同一拍）：刚在 Snug 之外没了的窗口，它的 App 换没换个新窗口（换了就接着放上来）；

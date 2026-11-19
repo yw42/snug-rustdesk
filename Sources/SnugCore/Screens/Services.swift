@@ -144,4 +144,13 @@ public protocol DisplayArrangement: AnyObject {
     func makeMain(_ id: DisplayID) async -> Bool
     /// 按记下的原点摆回去；记下之后才出现、或已经不在的屏不动
     func restore(_ origins: [DisplayID: CGPoint]) async -> Bool
+    func saveRecoveryOrigins(_ origins: [DisplayID: CGPoint]) -> Bool
+    func recoverOrigins() async
+    func clearRecoveryOrigins()
+}
+
+extension DisplayArrangement {
+    public func saveRecoveryOrigins(_ origins: [DisplayID: CGPoint]) -> Bool { true }
+    public func recoverOrigins() async {}
+    public func clearRecoveryOrigins() {}
 }

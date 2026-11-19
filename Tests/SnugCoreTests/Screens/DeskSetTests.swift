@@ -503,6 +503,37 @@ struct DeskSetTests {
         #expect(rig.arrangement.main == 102)
     }
 
+    @Test("排布快照写失败时保留原主屏")
+    func mainRequiresRecoverySnapshot() async throws {
+        let rig = try Rig()
+        rig.arrangement.recoveryWritesFail = true
+        var wish = rig.secondWish(computer)
+        wish.main = true
+        rig.set.setWishes([rig.desk.wish, wish])
+        await rig.set.idle()
+        #expect(rig.arrangement.main == 1)
+        #expect(!rig.journal.all.contains("main 102"))
+    }
+
+    @Test("启动恢复失败后保留快照，重试成功后重复恢复不再应用")
+    func arrangementRecoveryRetry() async throws {
+        let rig = try Rig()
+        let original: [DisplayID: CGPoint] = [1: .zero]
+        #expect(rig.arrangement.saveRecoveryOrigins(original))
+        rig.arrangement.fails = true
+        rig.set.recover()
+        await rig.set.idle()
+        #expect(rig.arrangement.recoveryOrigins == original)
+        rig.arrangement.fails = false
+        rig.set.recoverArrangement()
+        await rig.set.idle()
+        #expect(rig.arrangement.recoveryOrigins == nil)
+        rig.journal.clear()
+        rig.set.recoverArrangement()
+        await rig.set.idle()
+        #expect(rig.journal.all.isEmpty)
+    }
+
     @Test("撤设成主屏的那块：先设回原主屏（窗口跟着回去），再清场、再撤")
     func releasesMainBeforeClearing() async throws {
         let rig = try Rig()
